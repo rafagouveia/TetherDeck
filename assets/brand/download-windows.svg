@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="308" height="68" viewBox="0 0 308 68" role="img" aria-label="Download for Windows">
+<defs><linearGradient id="surface" x2="0" y2="1"><stop stop-color="#404b60"/><stop offset="1" stop-color="#303a4b"/></linearGradient></defs>
+<rect x=".5" y=".5" width="307" height="67" rx="12" fill="url(#surface)" stroke="#657a99"/>
+<g stroke="#a7c8f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M29 20v18m-6-6 6 6 6-6M20 44h18"/></g>
+<text x="52" y="30" fill="#f2f5fa" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="600">Download for Windows</text>
+<text x="52" y="49" fill="#c5cedb" font-family="Segoe UI,Arial,sans-serif" font-size="12">Windows x86_64 · ZIP · Preview</text>
+</svg>

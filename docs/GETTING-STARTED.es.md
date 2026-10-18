@@ -43,6 +43,30 @@ cuadro y respuesta de la API. No miden la latencia completa entre ratón y dispo
 Configura `TETHERDECK_FFMPEG`, coloca `ffmpeg.exe` junto al programa, utiliza
 `%ProgramFiles%\ffmpeg\ffmpeg.exe` o `PATH`, en ese orden. FFmpeg no está incluido.
 
+## Teclado, reconexión y ventanas
+
+Durante la reconexión se conserva el último cuadro en escala de grises con un
+indicador central, sin mover el marco ni los controles. El vídeo vuelve
+automáticamente sin repetir gestos. Ambas ventanas recuerdan posición, tamaño y
+estado maximizado, adaptándose a las pantallas disponibles.
+
+Con control activo y el botón de teclado habilitado, haz clic en un campo del
+iPhone y escribe desde el PC. Retroceso, Intro, flechas y Suprimir llegan al
+dispositivo; Tab conserva la navegación accesible de Windows. Ctrl+A/C/X/Z
+corresponden a atajos Command del iPhone. Ctrl+V envía texto del portapapeles del
+PC solo al solicitarlo. La cola es limitada y se vacía al perder foco o reconectar.
+
+Teclado, contacto y vídeo no necesitan otra app en el iPhone. El mapeo requiere
+el teclado físico **U.S.** del iPhone y admite ASCII y acentos latinos comunes.
+Otros diseños pueden producir caracteres diferentes. Usa el teclado del iPhone
+para emojis y otros sistemas de escritura. iOS decide cuándo mostrar el teclado
+virtual; el teclado remoto temporal se retira después de cada envío.
+
+Inicia el arrastre en la franja inferior de la imagen: sube y suelta para Inicio,
+o sube y mantén antes de soltar para el selector de apps. iOS determina el
+resultado según trayectoria y tiempo; los botones Inicio y Apps siguen
+disponibles. Nunca repitas un gesto cuyo resultado sea incierto.
+
 ## Elegir proveedor
 
 En **Elementos**, elige **Automático**, **WebDriverAgent** o **Accesibilidad iOS**.

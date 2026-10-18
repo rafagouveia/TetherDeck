@@ -606,6 +606,7 @@ impl Desktop {
                 }
             }));
         desktop.start_discovery(window, cx);
+        desktop._subscriptions.push(crate::window_state::observe("main", window, cx));
         desktop
             ._subscriptions
             .push(cx.observe_window_activation(window, |this, window, cx| {

@@ -44,6 +44,16 @@ pub fn tr(source: &str) -> String {
         return source.to_owned();
     }
     let translated = match source {
+        "Conectando ao iPhone" => ("Connecting to iPhone", "Conectando al iPhone"),
+        "Reconectando ao iPhone" => ("Reconnecting to iPhone", "Reconectando al iPhone"),
+        "Transmissão pausada" => ("Stream paused", "Transmisión pausada"),
+        "Transmissão indisponível" => ("Stream unavailable", "Transmisión no disponible"),
+        "A imagem volta automaticamente. Seus controles continuam no lugar." => ("Video resumes automatically. Your controls stay in place.", "El vídeo vuelve automáticamente. Los controles permanecen en su sitio."),
+        "Use Retomar para abrir a transmissão." => ("Use Resume to open the stream.", "Usa Reanudar para abrir la transmisión."),
+        "Teclado do computador · clique na tela para digitar" => ("Computer keyboard · click the screen to type", "Teclado del ordenador · haz clic en la pantalla para escribir"),
+        "Alternar teclado do computador" => ("Toggle computer keyboard", "Alternar teclado del ordenador"),
+        "Caractere não suportado. Use o teclado do iPhone para esse texto." => ("Unsupported character. Use the iPhone keyboard for this text.", "Carácter no compatible. Usa el teclado del iPhone para este texto."),
+        "Entrada pausada: digitação rápida demais. Confira o texto antes de continuar." => ("Input paused: typing is too fast. Check the text before continuing.", "Entrada pausada: escritura demasiado rápida. Revisa el texto antes de continuar."),
         "iPhone de demonstração" => ("Demo iPhone", "iPhone de demostración"),
         "Oculto na apresentação" => ("Hidden in presentation", "Oculto en presentación"),
         "Apresentação · dados do aparelho ocultos" => (

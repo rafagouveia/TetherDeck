@@ -4,6 +4,13 @@
 
 ![TetherDeck](assets/brand/tetherdeck-banner.png)
 
+[![Baixar para Windows — prévia ZIP x86_64](assets/brand/download-windows.pt-BR.svg)](https://github.com/rafagouveia/TetherDeck/releases/download/v0.1.0-preview.1/tetherdeck-windows-x86_64.zip)
+
+**Baixe → extraia o ZIP → abra `TetherDeck.exe`.** Mantenha os arquivos juntos.
+[Notas da versão e SHA-256](https://github.com/rafagouveia/TetherDeck/releases/tag/v0.1.0-preview.1) · [Preparar o computador](docs/GETTING-STARTED.md)
+
+Requer suporte Apple no Windows, pareamento confiável e FFmpeg externo para vídeo.
+
 **Um espaço de trabalho nativo para conectar, visualizar e automatizar um iPhone pelo Windows.**
 
 Projeto gratuito e open source em Rust, atualmente em prévia experimental com foco

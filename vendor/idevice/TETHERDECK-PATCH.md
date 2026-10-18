@@ -16,6 +16,12 @@ copyright notices and license when redistributing source or compiled packages.
 
 ## Local source changes
 
+The `send_digitizer` coordinate documentation in `src/services/core_device/hid.rs`
+was corrected to normalized display ratios. Protocol evidence is the sender in
+[idb's DTUHID transport](https://github.com/facebook/idb/blob/main/FBSimulatorControl/HID/SimulatorDTUHIDTransport.swift)
+and [ipb's digitizer protocol observations](https://github.com/ipbtools/ipb/blob/main/docs/protocol.md#hid-digitizer).
+Only the coordinate contract was used; no implementation from those projects was copied.
+
 | File | Purpose |
 | --- | --- |
 | `src/sni.rs` | Pin the server certificate to the trusted pairing record and verify TLS transcript signatures instead of accepting them unconditionally. |

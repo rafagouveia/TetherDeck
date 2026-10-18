@@ -48,6 +48,32 @@ minimizar/maximizar/fechar e controles laterais flutuantes. Pressione o mouse pa
 tocar, mova enquanto segura para arrastar e solte para levantar o dedo. Pausa,
 quadros antigos e cancelamentos liberam o contato. Comandos falhos não são repetidos.
 
+Durante a reconexão, o último quadro fica em preto e branco com um indicador
+central; controles e moldura permanecem no lugar. A retomada é automática, sem
+repetir gestos. A janela principal e a tela remota lembram posição, tamanho e
+estado maximizado. Janelas fora de um monitor disponível são reposicionadas.
+
+### Teclado e gestos do sistema
+
+Com **Controle ativo** e o botão de teclado ligado, clique no campo de texto do
+iPhone e digite no PC. Backspace, Enter, setas e Delete são enviados ao aparelho.
+Tab permanece na navegação acessível dos controles do Windows. Ctrl+A/C/X/Z
+correspondem aos atalhos Command do iPhone; Ctrl+V envia texto da área de
+transferência do PC somente quando solicitado. Texto incompatível é recusado.
+
+Não precisa instalar outro app para teclado, toque ou vídeo. O mapeamento usa o
+layout de teclado físico **U.S.** do iPhone: ASCII e acentos latinos comuns,
+incluindo português e espanhol. Outros layouts podem produzir caracteres
+diferentes; emojis e outros sistemas de escrita devem usar o teclado do iPhone.
+O iOS decide quando mostrar o teclado virtual. O teclado remoto temporário é
+removido após cada envio; não há promessa de forçar o teclado virtual em todo app.
+
+Comece o arraste na faixa inferior da imagem para solicitar o gesto do sistema:
+suba e solte para Home, ou suba e segure antes de soltar para o alternador. O iOS
+decide o resultado conforme a trajetória e o tempo. Os botões Home e Apps
+continuam disponíveis. Perder foco ou vídeo cancela o contato; não repita um
+gesto de resultado incerto. A fila de digitação é limitada e limpa na reconexão.
+
 As estatísticas mostram FPS de pintura GPUI, intervalo derivado, idade local do
 quadro e resposta da API. Esses valores não medem o atraso completo entre mouse e aparelho.
 

@@ -4,6 +4,13 @@
 
 ![TetherDeck](assets/brand/tetherdeck-banner.png)
 
+[![Download for Windows — x86_64 ZIP preview](assets/brand/download-windows.svg)](https://github.com/rafagouveia/TetherDeck/releases/download/v0.1.0-preview.1/tetherdeck-windows-x86_64.zip)
+
+**Download → extract the ZIP → open `TetherDeck.exe`.** Keep the files together.
+[Release notes and SHA-256](https://github.com/rafagouveia/TetherDeck/releases/tag/v0.1.0-preview.1) · [Setup requirements](docs/GETTING-STARTED.en.md)
+
+Requires Apple's Windows device support, trusted pairing and external FFmpeg for video.
+
 **A native Windows workspace for connecting to, viewing and automating an iPhone.**
 
 TetherDeck brings a live device screen, touch controls, element inspection and

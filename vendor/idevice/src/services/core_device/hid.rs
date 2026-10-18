@@ -597,7 +597,8 @@ impl<R: ReadWrite> IndigoHidClient<R> {
     /// path on [`UniversalHidServiceClient`]). With `edge` = [`DigitizerEdge::None`]
     /// it is a plain touch/drag at `point_one` (and optionally a second contact
     /// `point_two`); with a non-`None` edge it becomes an edge-swipe system
-    /// gesture. Coordinates are `f64` in the display's pixel space.
+    /// gesture. Coordinates are `f64` unit ratios of the display dimensions.
+    /// They are neither physical pixels nor the raw touchscreen's 16-bit units.
     pub async fn send_digitizer(
         &mut self,
         point_one: (f64, f64),

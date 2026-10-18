@@ -9,7 +9,7 @@ use idevice::{
                 build_start_video_parameters,
             },
             hid::{
-                ButtonState, IndigoHidClient, KeyboardUsage, MainKeyboardService,
+                ButtonState, DigitizerEdge, DigitizerEventType, DigitizerTarget, IndigoHidClient, KeyboardUsage, MainKeyboardService,
                 TOUCHSCREEN_STATE_CONTACT, TOUCHSCREEN_STATE_RELEASE, UniversalHidServiceClient,
             },
         },
@@ -169,11 +169,13 @@ pub fn validate_hid_action(action: &HidAction) -> Result<(), DeviceError> {
         HidAction::TypeText { text }
             if !text
                 .chars()
-                .all(|character| keyboard_usage(character).is_some()) =>
+                .all(|character| keyboard_usage(character).is_some() || latin_key(character).is_some()) =>
         {
             Err(DeviceError::UnsupportedText)
         }
         HidAction::TypeText { .. } => Ok(()),
+        HidAction::KeyPress { usage, modifiers } if (0x04..=0x73).contains(usage) && *modifiers <= 0x0f => Ok(()),
+        HidAction::KeyPress { .. } => Err(DeviceError::UnsupportedText),
     }
 }
 
@@ -195,6 +197,7 @@ pub(crate) struct HidSession {
     universal: Option<UniversalHidServiceClient<Box<dyn ReadWrite>>>,
     pending_button: Option<u64>,
     pending_touch: Option<(u16, u16)>,
+    pending_edge: Option<(f64, f64)>,
     keyboard: Option<MainKeyboardService>,
     keyboard_creation_unknown: bool,
     submitted: bool,
@@ -294,6 +297,31 @@ impl HidSession {
                 touch.activity = Instant::now();
             }
         }
+        // System gestures need Indigo's explicit edge identity. Ordinary
+        // touchscreen reports are intentionally retained for application input.
+        // Indigo uses unit ratios, not physical pixels or UniversalHID's u16.
+        // Protocol evidence: facebook/idb SimulatorDTUHIDTransport.swift and
+        // ipbtools/ipb docs/protocol.md (HID Digitizer); no implementation copied.
+        let edge_point = (f64::from(request.x) / f64::from(source_size[0]), f64::from(request.y) / f64::from(source_size[1]));
+        if request.phase == TouchPhase::Start && u32::from(request.y) >= source_size[1].saturating_sub((source_size[1] / 50).max(1)) {
+            self.pending_edge = Some(edge_point);
+        }
+        if self.pending_edge.is_some() {
+            if request.phase != TouchPhase::Cancel { self.pending_edge = Some(edge_point); }
+            if releasing {
+                self.cancel_touch(handshake, provider).await?;
+            } else {
+                let event = if request.phase == TouchPhase::Start { DigitizerEventType::Start } else { DigitizerEventType::Position };
+                if self.send_edge_sample(handshake, provider, event).await.is_err() {
+                    // Only termination is allowed after an uncertain submission.
+                    let _ = self.cancel_touch(handshake, provider).await;
+                    self.invalid = true;
+                    return Err(DeviceError::ActionOutcomeUnknown);
+                }
+                if let Some(touch) = self.continuous_touch.as_mut() { touch.activity = Instant::now(); }
+            }
+            return Ok(TouchResponse { gesture_id: request.gesture_id, sequence: request.sequence, active: !releasing });
+        }
         let point = normalize_touch((f64::from(request.x), f64::from(request.y)), source_size);
         if request.phase != TouchPhase::Cancel {
             self.pending_touch = Some(point);
@@ -341,6 +369,15 @@ impl HidSession {
         })
         .await
         .map_err(|_| DeviceError::ActionOutcomeUnknown)?
+    }
+
+    async fn send_edge_sample(&mut self, handshake: &mut RsdHandshake, provider: &mut impl RsdProvider, event: DigitizerEventType) -> Result<(), DeviceError> {
+        let point = self.pending_edge.ok_or(DeviceError::InvalidTouchSequence)?;
+        tokio::time::timeout(TOUCH_SEND_BUDGET, async {
+            if self.indigo.is_none() { self.indigo = Some(handshake.connect(provider).await?); }
+            self.indigo.as_mut().expect("initialized Indigo channel").send_digitizer(point, None, event, DigitizerEdge::Bottom, DigitizerTarget::MainScreen).await?;
+            Ok::<(),DeviceError>(())
+        }).await.map_err(|_| DeviceError::ActionOutcomeUnknown)?
     }
 
     fn end_touch_record(&mut self) {
@@ -400,6 +437,17 @@ impl HidSession {
         handshake: &mut RsdHandshake,
         provider: &mut impl RsdProvider,
     ) -> Result<(), DeviceError> {
+        if self.pending_edge.is_some() {
+            let mut released = self.send_edge_sample(handshake, provider, DigitizerEventType::End).await.is_ok();
+            if !released {
+                self.indigo = None;
+                released = self.send_edge_sample(handshake, provider, DigitizerEventType::End).await.is_ok();
+            }
+            self.end_touch_record();
+            if released { self.pending_edge = None; return Ok(()) }
+            self.invalid = true; self.indigo = None;
+            return Err(DeviceError::ActionOutcomeUnknown);
+        }
         let Some(point) = self.pending_touch else {
             self.end_touch_record();
             return Ok(());
@@ -624,7 +672,12 @@ impl HidSession {
                 )
                 .await?;
             }
-            HidAction::TypeText { text } => {
+            action @ (HidAction::TypeText { .. } | HidAction::KeyPress { .. }) => {
+                let (text, key) = match action {
+                    HidAction::TypeText { text } => (text, None),
+                    HidAction::KeyPress { usage, modifiers } => (String::new(), Some((usage, modifiers))),
+                    _ => unreachable!(),
+                };
                 if text.len() > 4096 {
                     return Err(DeviceError::InvalidTextLength);
                 }
@@ -639,7 +692,9 @@ impl HidSession {
                 self.keyboard = Some(keyboard.create_main_keyboard().await?);
                 self.keyboard_creation_unknown = false;
                 let service = self.keyboard.as_mut().expect("confirmed keyboard");
-                let result = type_text(keyboard, service, &text).await;
+                let result = if let Some((usage, modifiers)) = key {
+                    press_key(keyboard, service, usage, modifiers).await
+                } else { type_text(keyboard, service, &text).await };
                 let cleanup = keyboard.remove_main_keyboard(service).await;
                 if cleanup.is_ok() {
                     self.keyboard = None;
@@ -766,20 +821,39 @@ async fn type_text(
     text: &str,
 ) -> Result<(), DeviceError> {
     for character in text.chars() {
-        let (usage, shifted) = keyboard_usage(character).ok_or(DeviceError::UnsupportedText)?;
-        let key = KeyboardUsage::new(usage)?;
-        let shift = KeyboardUsage::new(0xE1)?;
-        if shifted {
-            keyboard.main_keyboard_key_down(service, shift).await?;
-        }
-        keyboard.main_keyboard_key_down(service, key).await?;
-        keyboard.main_keyboard_key_up(service, key).await?;
-        if shifted {
-            keyboard.main_keyboard_key_up(service, shift).await?;
-        }
+        if let Some((usage, shifted)) = keyboard_usage(character) {
+            press_key(keyboard, service, usage, if shifted {2} else {0}).await?;
+        } else if let Some((accent, base, shifted)) = latin_key(character) {
+            // Apple US hardware layout: Option accent dead key, then the base.
+            press_key(keyboard, service, accent, 4 | if base.is_none() && shifted {2} else {0}).await?;
+            if let Some(base) = base { press_key(keyboard, service, base, if shifted {2} else {0}).await?; }
+        } else { return Err(DeviceError::UnsupportedText) }
         tokio::time::sleep(Duration::from_millis(12)).await;
     }
     Ok(())
+}
+
+async fn press_key(keyboard: &mut UniversalHidServiceClient<Box<dyn ReadWrite>>, service: &mut MainKeyboardService, usage: u16, modifiers: u8) -> Result<(), DeviceError> {
+    for bit in 0..4 { if modifiers & (1 << bit) != 0 { keyboard.main_keyboard_key_down(service, KeyboardUsage::new(0xe0 + bit)?).await?; } }
+    let key = KeyboardUsage::new(usage)?;
+    keyboard.main_keyboard_key_down(service, key).await?;
+    keyboard.main_keyboard_key_up(service, key).await?;
+    for bit in (0..4).rev() { if modifiers & (1 << bit) != 0 { keyboard.main_keyboard_key_up(service, KeyboardUsage::new(0xe0 + bit)?).await?; } }
+    Ok(())
+}
+
+fn latin_key(c: char) -> Option<(u16, Option<u16>, bool)> {
+    let lower = c.to_lowercase().next()?;
+    let shifted = c.is_uppercase();
+    let (accent, base) = match lower {
+        'á'=>('e',Some('a')), 'é'=>('e',Some('e')), 'í'=>('e',Some('i')), 'ó'=>('e',Some('o')), 'ú'=>('e',Some('u')),
+        'à'=>('`',Some('a')), 'è'=>('`',Some('e')), 'ì'=>('`',Some('i')), 'ò'=>('`',Some('o')), 'ù'=>('`',Some('u')),
+        'â'=>('i',Some('a')), 'ê'=>('i',Some('e')), 'î'=>('i',Some('i')), 'ô'=>('i',Some('o')), 'û'=>('i',Some('u')),
+        'ä'=>('u',Some('a')), 'ë'=>('u',Some('e')), 'ï'=>('u',Some('i')), 'ö'=>('u',Some('o')), 'ü'=>('u',Some('u')),
+        'ã'=>('n',Some('a')), 'õ'=>('n',Some('o')), 'ñ'=>('n',Some('n')), 'ç'=>('c',None),
+        _=>return None,
+    };
+    Some((keyboard_usage(accent)?.0, base.and_then(|b|keyboard_usage(b).map(|v|v.0)), shifted))
 }
 
 fn keyboard_usage(character: char) -> Option<(u16, bool)> {
@@ -862,7 +936,7 @@ mod tests {
     fn hid_contract_validation_rejects_unsupported_text_and_long_text() {
         assert!(matches!(
             validate_hid_action(&HidAction::TypeText {
-                text: "olá".into()
+                text: "🙂".into()
             }),
             Err(DeviceError::UnsupportedText)
         ));

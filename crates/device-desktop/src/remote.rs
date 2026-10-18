@@ -478,6 +478,13 @@ pub struct Remote {
     command_task: Option<Task<()>>,
     touch_reply: Option<Task<()>>,
     activation: Option<Subscription>,
+    placement: Option<Subscription>,
+    focus: FocusHandle,
+    keyboard_requested: bool,
+    keyboard_queue: VecDeque<HidAction>,
+    keyboard_sending: bool,
+    keyboard_notice: Option<String>,
+    composition: String,
     busy: bool,
     paused: bool,
     // Intent survives a temporary video delay; readiness is checked per input.
@@ -516,11 +523,7 @@ pub fn open(
     cx: &mut App,
 ) -> anyhow::Result<AnyWindowHandle> {
     let options = WindowOptions {
-        window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
-            None,
-            size(px(440.), px(840.)),
-            cx,
-        ))),
+        window_bounds: Some(crate::window_state::restore("remote", size(px(440.), px(840.)), size(px(360.), px(440.)), cx)),
         window_min_size: Some(size(px(360.), px(440.))),
         window_background: WindowBackgroundAppearance::Transparent,
         titlebar: Some(TitlebarOptions {
@@ -575,6 +578,13 @@ impl Remote {
             command_task: None,
             touch_reply: None,
             activation: None,
+            placement: None,
+            focus: cx.focus_handle(),
+            keyboard_requested: true,
+            keyboard_queue: VecDeque::new(),
+            keyboard_sending: false,
+            keyboard_notice: None,
+            composition: String::new(),
             busy: false,
             paused: false,
             control_requested: false,
@@ -596,9 +606,13 @@ impl Remote {
         remote.activation = Some(cx.observe_window_activation(window, |view, window, cx| {
             if !window.is_window_active() {
                 view.cancel_touch();
+                view.keyboard_queue.clear();
+                view.composition.clear();
                 cx.notify();
             }
         }));
+        remote.placement = Some(crate::window_state::observe("remote", window, cx));
+        window.focus(&remote.focus, cx);
         remote.start(true, window, cx);
         remote.stale_task = Some(cx.spawn_in(window, async move |this, cx| {
             loop {
@@ -613,6 +627,8 @@ impl Remote {
                             if stale {
                                 // Never carry a partially completed gesture over a gap.
                                 view.cancel_touch();
+                                view.keyboard_queue.clear();
+                                view.composition.clear();
                                 view.pointer_feedback = None;
                             }
                             cx.notify();
@@ -652,11 +668,8 @@ impl Remote {
         self.paint_metrics = Arc::new(PaintMetrics::default());
         self.started = Instant::now();
         self.last_metrics = Instant::now();
-        if let Some(old) = self.frame.take() {
-            if let Err(error) = window.drop_image(old.image.clone()) {
-                eprintln!("TetherDeck: falha ao liberar textura da tela remota: {error}");
-            }
-        }
+        // Retain exactly one previous image as a disabled placeholder. Its
+        // timestamp/generation never becomes evidence of live input readiness.
         let generation = self.generation;
         let (send, mut receive) = watch::channel(VideoEvent {
             generation,
@@ -710,6 +723,8 @@ impl Remote {
 
     fn stop(&mut self) {
         self.cancel_touch();
+        self.keyboard_queue.clear();
+        self.composition.clear();
         self.generation = self.generation.wrapping_add(1).max(1);
         self.viewing_requested = false;
         self.recovering = false;
@@ -876,8 +891,10 @@ impl Remote {
         cx.notify();
     }
 
-    fn enter_recovery(&mut self, reason: String, delay_ms: u64, window: &mut Window) {
+    fn enter_recovery(&mut self, reason: String, delay_ms: u64, _window: &mut Window) {
         self.cancel_touch();
+        self.keyboard_queue.clear();
+        self.composition.clear();
         if let Some(mapping) = self.frame.as_ref().and_then(|frame| frame.geometry) {
             self.recovery_geometry = Some(mapping);
         }
@@ -897,9 +914,7 @@ impl Remote {
         );
         self.image_bounds.set(None);
         self.samples.clear();
-        if let Some(old) = self.frame.take() {
-            let _ = window.drop_image(old.image.clone());
-        }
+        // Keep the last frame and geometry for a stable, monochrome placeholder.
     }
 
     fn fresh(&self) -> bool {
@@ -910,6 +925,7 @@ impl Remote {
     fn control_ready(&self) -> bool {
         self.viewing_requested()
             && !self.recovering()
+            && !self.video_stale
             && self.fresh()
             && self
                 .frame
@@ -975,6 +991,7 @@ impl Remote {
             HidAction::Drag { .. } => "drag",
             HidAction::DeviceButton { .. } => "button",
             HidAction::TypeText { .. } => "text",
+            HidAction::KeyPress { .. } => "key",
         };
         let session = self.session.clone();
         let (send, receive) = oneshot::channel();
@@ -1007,13 +1024,16 @@ impl Remote {
         }
         self.command_task = Some(cx.spawn_in(window, async move |this, cx| {
             let response = receive.await;
-            let _ = this.update_in(cx, |view, _, cx| {
+            let _ = this.update_in(cx, |view, window, cx| {
                 view.busy = false;
+                view.keyboard_sending = false;
                 match response {
                     Ok((Ok(()), ms)) => { view.command_ms = Some(ms); view.message = "Comando enviado. Confira o resultado na tela.".into(); }
                     Ok((Err(error), ms)) => { view.command_ms = Some(ms); view.action_error = Some(error); view.control_requested = false; view.auto_control_pending = false; }
                     Err(_) => { view.action_error = Some("Resposta do comando indisponível; confira o aparelho antes de repetir.".into()); view.control_requested = false; view.auto_control_pending = false; }
                 }
+                if view.action_error.is_some() { view.keyboard_queue.clear(); }
+                view.flush_keyboard(window, cx);
                 cx.notify();
             });
         }));
@@ -1104,12 +1124,71 @@ impl Remote {
         self.pointer_feedback = None;
     }
 
+    fn enqueue_key(&mut self, action: HidAction, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.keyboard_requested || !self.control_requested || !self.control_ready()
+            || self.drag.is_some() || self.action_error.is_some() || (self.busy && !self.keyboard_sending) { return }
+        if let HidAction::TypeText { text } = &action {
+            if text.is_empty() { return }
+            if text.len() > 1024 || !text.chars().all(|c| c.is_ascii() && !c.is_control() || matches!(c, '\n'|'\r'|'\t') || "áéíóúàèìòùâêîôûäëïöüãõñçÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÄËÏÖÜÃÕÑÇ".contains(c)) {
+                self.keyboard_notice = Some(tr("Caractere não suportado. Use o teclado do iPhone para esse texto."));
+                cx.notify(); return
+            }
+            if let Some(HidAction::TypeText { text: pending }) = self.keyboard_queue.back_mut() {
+                if pending.len() + text.len() <= 1024 { pending.push_str(text); self.flush_keyboard(window, cx); return }
+            }
+        }
+        if self.keyboard_queue.len() >= 32 || self.keyboard_queue.iter().map(|item| match item { HidAction::TypeText { text } => text.len(), _ => 1 }).sum::<usize>() >= 512 {
+            self.keyboard_queue.clear();
+            self.keyboard_notice = Some(tr("Entrada pausada: digitação rápida demais. Confira o texto antes de continuar."));
+            self.keyboard_requested = false;
+            cx.notify(); return
+        }
+        self.keyboard_notice = None;
+        self.keyboard_queue.push_back(action);
+        self.flush_keyboard(window, cx);
+    }
+
+    fn flush_keyboard(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.busy { return }
+        if !self.keyboard_requested || !self.allowed() || !window.is_window_active() || !self.focus.is_focused(window) {
+            self.keyboard_queue.clear(); return
+        }
+        if let Some(action) = self.keyboard_queue.pop_front() {
+            self.keyboard_sending = true;
+            self.command(action, window, cx);
+        }
+    }
+
+    fn key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        let key = &event.keystroke;
+        // OS window shortcuts and ordinary focus traversal remain native.
+        if key.modifiers.platform || key.modifiers.alt { return }
+        if !self.focus.is_focused(window) || !self.keyboard_requested || !self.control_requested || !self.control_ready() { return }
+        if key.modifiers.control && key.key == "v" {
+            if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+                self.enqueue_key(HidAction::TypeText { text }, window, cx);
+            }
+            cx.stop_propagation(); return
+        }
+        let usage = match key.key.as_str() {
+            "backspace"=>0x2a, "delete"=>0x4c, "enter"|"return"=>0x28,
+            "escape"=>0x29, "left"=>0x50, "right"=>0x4f, "up"=>0x52, "down"=>0x51,
+            "home"=>0x4a, "end"=>0x4d, "pageup"=>0x4b, "pagedown"=>0x4e,
+            "a" if key.modifiers.control=>0x04, "c" if key.modifiers.control=>0x06,
+            "x" if key.modifiers.control=>0x1b, "z" if key.modifiers.control=>0x1d,
+            _=>return,
+        };
+        self.enqueue_key(HidAction::KeyPress { usage, modifiers: if key.modifiers.control {8} else {0} | if key.modifiers.shift {2} else {0} }, window, cx);
+        cx.stop_propagation();
+    }
+
     fn pointer_down(
         &mut self,
         event: &MouseDownEvent,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        window.focus(&self.focus, cx);
         if window_chrome::is_resize_area(window, event.position) {
             self.cancel_touch();
             return;
@@ -1247,6 +1326,10 @@ impl Render for Remote {
         let pointer_feedback = self.pointer_feedback;
         let pointer_held = self.drag.is_some();
         let reduce_motion = cx.reduce_motion();
+        let animation_started = self.started;
+        let placeholder = !running || self.recovering() || !self.fresh() || self.video_stale || self.frame.is_none();
+        let input_view = cx.entity();
+        let input_focus = self.focus.clone();
         let controlling = self.control_requested && self.control_ready();
         let control_suspended = self.control_requested && !self.control_ready();
         let content = self
@@ -1293,11 +1376,7 @@ impl Render for Remote {
                             // paused. This does not run as a decorative animation.
                             window.request_animation_frame();
                         }
-                        let Some(frame) = canvas_frame else {
-                            bounds_store.set(None);
-                            return None;
-                        };
-                        let content = frame.geometry.map(|g| g.physical).unwrap_or(frame.size);
+                        let content = canvas_frame.as_ref().map(|frame| frame.geometry.map(|g| g.physical).unwrap_or(frame.size)).unwrap_or([900,1950]);
                         // A 6 px generic bezel follows the actual image rectangle.
                         let scale = ((f32::from(bounds.size.width) - 12.).max(1.) / content[0].max(1) as f32)
                             .min((f32::from(bounds.size.height) - 12.).max(1.) / content[1].max(1) as f32);
@@ -1310,13 +1389,13 @@ impl Render for Remote {
                             ),
                             size: visible_size,
                         };
-                        bounds_store.set(Some(visible));
-                        let uv = frame.geometry.map(|g| g.uv).unwrap_or([1., 1.]);
+                        bounds_store.set(if placeholder { None } else { Some(visible) });
+                        let uv = canvas_frame.as_ref().and_then(|frame| frame.geometry).map(|g| g.uv).unwrap_or([1., 1.]);
                         let full = Bounds {
                             origin: visible.origin,
                             size: size(visible.size.width / uv[0], visible.size.height / uv[1]),
                         };
-                        Some((frame, visible, full))
+                        Some((canvas_frame, visible, full))
                     },
                     move |_, prepared, window, _| {
                         if let Some((frame, visible, full)) = prepared {
@@ -1324,22 +1403,25 @@ impl Render for Remote {
                             let radius = (f32::from(visible.size.width) * 0.065).clamp(12., 26.);
                             window.paint_quad(quad(bezel, px(radius), rgb(0x090b10), px(1.),
                                     if controlling { theme::accent().opacity(0.75) } else { theme::border() }, BorderStyle::default()));
-                            if window
+                            if let Some(frame) = frame { if window
                                 .paint_image(
                                     visible,
                                     full,
                                     Corners::all(px((radius - 5.).max(0.))),
                                     frame.image.clone(),
                                     0,
-                                    false,
+                                    placeholder,
                                 )
                                 .is_ok()
-                                && paint_metrics
+                                && !placeholder && paint_metrics
                                     .sequence
                                     .swap(frame.sequence, Ordering::Relaxed)
                                     != frame.sequence
                             {
                                 paint_metrics.count.fetch_add(1, Ordering::Relaxed);
+                            } }
+                            if placeholder {
+                                window.paint_quad(quad(visible, px((radius - 5.).max(0.)), rgb(0x11151d).opacity(0.56), px(0.), transparent_black(), BorderStyle::default()));
                             }
                             if let Some((position, at)) = pointer_feedback {
                                 let elapsed = at.elapsed().as_secs_f32();
@@ -1384,6 +1466,16 @@ impl Render for Remote {
             );
         }
         toolbar = toolbar
+            .child(div().w_full().h(px(1.)).my(px(2.)).bg(theme::border()))
+            .child(control_button("keyboard").icon(crate::icons::icon(IconName::Keyboard))
+                .w(px(36.)).h(px(36.)).selected(self.keyboard_requested)
+                .tooltip(tr("Teclado do computador · clique na tela para digitar"))
+                .accessibility_label(tr("Alternar teclado do computador"))
+                .on_click(cx.listener(|view, _, window, cx| {
+                    view.keyboard_requested = !view.keyboard_requested;
+                    view.keyboard_queue.clear(); view.keyboard_notice = None;
+                    window.focus(&view.focus, cx); cx.notify();
+                })))
             .child(div().w_full().h(px(1.)).my(px(2.)).bg(theme::border()))
             .child(control_button("capture").icon(crate::icons::icon(IconName::Camera))
                 .w(px(36.)).h(px(36.)).min_h(px(36.))
@@ -1624,23 +1716,37 @@ impl Render for Remote {
                     .child(screen)
                     .child(toolbar),
             );
-        if self.frame.is_none() {
+        if placeholder {
             group = group.child(
                 div()
+                    .id("remote-connection-placeholder")
                     .absolute()
-                    .top(px(80.))
-                    .left(px(16.))
-                    .w(px((phone_width - 32.).max(1.)))
-                    .p(px(12.))
-                    .rounded(px(10.))
+                    .top(px(48. + (phone_height - 120.).max(0.) / 2.))
+                    .left(px(22.))
+                    .w(px((phone_width - 44.).max(1.)))
+                    .flex().flex_col().items_center().gap(px(10.))
+                    .p(px(18.))
+                    .rounded(px(14.))
                     .bg(theme::surface())
-                    .text_color(theme::muted())
+                    .border_1().border_color(theme::border())
+                    .text_color(theme::text())
                     .text_size(px(12.))
-                    .child(status.clone()),
+                    .child(crate::icons::icon(IconName::Wifi).size(px(22.)).text_color(theme::accent()))
+                    .child(canvas(|bounds, _, _| bounds, move |_, bounds, window, _| {
+                        let phase = animation_started.elapsed().as_secs_f32() * 5.;
+                        for index in 0..3 {
+                            let alpha = if reduce_motion { 0.6 } else { 0.35 + 0.65 * ((phase - index as f32).sin() * 0.5 + 0.5) };
+                            window.paint_quad(quad(Bounds::new(point(bounds.origin.x + px(index as f32 * 10.), bounds.origin.y), size(px(4.),px(4.))), px(2.), theme::accent().opacity(alpha), px(0.), transparent_black(), BorderStyle::default()));
+                        }
+                        if !reduce_motion && running { window.request_animation_frame(); }
+                    }).w(px(24.)).h(px(4.)))
+                    .child(div().font_weight(FontWeight::SEMIBOLD).child(tr(if self.paused { "Transmissão pausada" } else if !running { "Transmissão indisponível" } else if self.frame.is_some() { "Reconectando ao iPhone" } else { "Conectando ao iPhone" })))
+                    .child(div().text_size(px(11.)).text_color(theme::muted()).text_center().child(tr(if running { "A imagem volta automaticamente. Seus controles continuam no lugar." } else { "Use Retomar para abrir a transmissão." }))),
             );
         }
-        let show_status_message = self.action_error.is_some()
-            || (control_suspended && running)
+        let status_message = self.keyboard_notice.clone().unwrap_or(status_message);
+        let show_status_message = self.action_error.is_some() || self.keyboard_notice.is_some()
+            || (control_suspended && running && !placeholder)
             || (!running && !self.paused && self.frame.is_some());
         if show_status_message && !self.show_stats {
             group = group.child(
@@ -1771,6 +1877,11 @@ impl Render for Remote {
             .id("remote-transparent-surface")
             .relative()
             .size_full()
+            .track_focus(&self.focus)
+            .on_key_down(cx.listener(Self::key_down))
+            .child(canvas(|_, _, _| (), move |bounds, _, window, cx| {
+                window.handle_input(&input_focus, ElementInputHandler::new(bounds, input_view), cx);
+            }).absolute().size_full())
             .on_mouse_move(cx.listener(Self::pointer_move))
             .on_mouse_exit(cx.listener(|view, _, _, cx| {
                 view.cancel_touch();
@@ -1785,4 +1896,30 @@ impl Render for Remote {
             .child(group);
         surface
     }
+}
+
+// Forward committed OS text, including dead-key/IME composition, exactly once.
+// No document contents, passwords or remote text are read back into this handler.
+impl EntityInputHandler for Remote {
+    fn text_for_range(&mut self, range: std::ops::Range<usize>, adjusted: &mut Option<std::ops::Range<usize>>, _: &mut Window, _: &mut Context<Self>) -> Option<String> {
+        let units: Vec<_> = self.composition.encode_utf16().collect();
+        let end = range.end.min(units.len()); let start = range.start.min(end);
+        *adjusted = Some(start..end); Some(String::from_utf16_lossy(&units[start..end]))
+    }
+    fn selected_text_range(&mut self, _: bool, _: &mut Window, _: &mut Context<Self>) -> Option<UTF16Selection> {
+        let end = self.composition.encode_utf16().count(); Some(UTF16Selection { range: end..end, reversed: false })
+    }
+    fn marked_text_range(&self, _: &mut Window, _: &mut Context<Self>) -> Option<std::ops::Range<usize>> {
+        (!self.composition.is_empty()).then(|| 0..self.composition.encode_utf16().count())
+    }
+    fn unmark_text(&mut self, _: &mut Window, _: &mut Context<Self>) { self.composition.clear(); }
+    fn replace_text_in_range(&mut self, _: Option<std::ops::Range<usize>>, text: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.composition.clear(); self.enqueue_key(HidAction::TypeText { text: text.to_owned() }, window, cx);
+    }
+    fn replace_and_mark_text_in_range(&mut self, _: Option<std::ops::Range<usize>>, text: &str, _: Option<std::ops::Range<usize>>, _: &mut Window, _: &mut Context<Self>) {
+        self.composition = text.chars().take(128).collect();
+    }
+    fn bounds_for_range(&mut self, _: std::ops::Range<usize>, _: Bounds<Pixels>, _: &mut Window, _: &mut Context<Self>) -> Option<Bounds<Pixels>> { self.image_bounds.get() }
+    fn character_index_for_point(&mut self, _: Point<Pixels>, _: &mut Window, _: &mut Context<Self>) -> Option<usize> { Some(0) }
+    fn accepts_text_input(&self, _: &mut Window, _: &mut Context<Self>) -> bool { self.keyboard_requested && self.control_requested && self.control_ready() }
 }

@@ -156,6 +156,13 @@ pub enum HidAction {
     TypeText {
         text: String,
     },
+    /// One complete keyboard-page press/release. Modifiers: Ctrl=1,
+    /// Shift=2, Alt/Option=4, Command=8. No persistent key-down state.
+    KeyPress {
+        usage: u16,
+        #[serde(default)]
+        modifiers: u8,
+    },
 }
 
 /// One ordered sample of a live single-finger gesture in physical screen pixels.

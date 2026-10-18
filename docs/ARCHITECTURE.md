@@ -46,6 +46,27 @@ Stream reconnection discards the previous stream. Device actions are never repla
 after an unknown result. Old frames block new input without being presented as
 proof of a current device state. Geometry changes invalidate an in-progress gesture.
 
+During startup/reconnection the remote window retains at most one previous image
+as a dimmed grayscale placeholder. Its timestamp is not refreshed, input remains
+gated, and its texture is released when replaced. The phone bezel and controls
+keep their layout. Reduced motion disables the connection indicator animation.
+
+Committed Windows text enters a bounded keyboard queue in the remote window.
+Text composition is held locally until committed; no remote document is read.
+Keyboard commands contain complete press/release sequences and retain the
+existing confirmed keyboard ownership/removal checks. The supported mapping is
+the iPhone U.S. hardware layout with a bounded set of Latin accent compositions,
+not arbitrary Unicode. Focus loss, stale video, pause, recovery and failures
+discard unsent input. Bottom-edge contacts use Indigo's explicit Bottom edge
+Start/Position/End path, with the same ordered sequence and contact lease; ordinary
+contacts keep the existing UniversalHID path. Termination is the only operation
+allowed after an uncertain gesture sample.
+
+Main and remote window placement are saved separately under the application's
+local data directory. Bounds updates coalesce into a background writer, quit
+flushes the latest state, and restore clamps placement to an available display.
+Connection credentials and device identities are not part of this file.
+
 Statistics distinguish distinct frames painted by GPUI, `1000/FPS`, local decoded
 frame age and API response time. None is a GPU presentation fence or a full
 mouse-to-device latency measurement. There is no universal 30/60 FPS guarantee.

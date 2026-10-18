@@ -8,6 +8,7 @@ mod i18n;
 mod remote;
 mod runner_import;
 mod window_chrome;
+mod window_state;
 
 struct BrandAssets;
 impl gpui_kit::AssetSource for BrandAssets {
@@ -40,14 +41,9 @@ fn main() {
         .with_assets(BrandAssets)
         .run(move |cx| {
             gpui_kit::init(cx);
+            cx.on_app_quit(|cx| window_state::flush(cx)).detach();
             let options = gpui_kit::WindowOptions {
-                window_bounds: Some(gpui_kit::WindowBounds::Windowed(
-                    gpui_kit::Bounds::centered(
-                        None,
-                        gpui_kit::size(gpui_kit::px(1250.), gpui_kit::px(820.)),
-                        cx,
-                    ),
-                )),
+                window_bounds: Some(window_state::restore("main", gpui_kit::size(gpui_kit::px(1250.), gpui_kit::px(820.)), gpui_kit::size(gpui_kit::px(720.), gpui_kit::px(520.)), cx)),
                 titlebar: Some(gpui_kit::TitlebarOptions {
                     title: Some("TetherDeck".into()),
                     appears_transparent: true,

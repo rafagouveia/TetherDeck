@@ -114,7 +114,7 @@ impl Preferences {
     }
 }
 
-fn replace_file(source: &std::path::Path, target: &std::path::Path) -> Result<(), String> {
+pub(crate) fn replace_file(source: &std::path::Path, target: &std::path::Path) -> Result<(), String> {
     #[cfg(windows)]
     {
         use std::os::windows::ffi::OsStrExt;

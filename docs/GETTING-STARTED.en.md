@@ -48,6 +48,31 @@ and floating device controls. Press the mouse to touch, move while held to drag,
 and release to lift the finger. Pausing, stale video and cancellation paths release
 contact. A failed command is not replayed automatically.
 
+During reconnection, the last frame becomes a grayscale placeholder with a
+central indicator; the bezel and controls keep their layout. Video resumes
+automatically without replaying gestures. Both windows remember position, size
+and maximized state, with placement adjusted to an available display.
+
+### Keyboard and system gestures
+
+With control active and the keyboard button enabled, click the iPhone text field
+and type on your PC. Backspace, Enter, arrows and Delete reach the device. Tab
+keeps accessible Windows control navigation. Ctrl+A/C/X/Z map to iPhone Command
+shortcuts; Ctrl+V sends PC clipboard text only when requested. Unsupported text
+is rejected. Unsent typing is bounded and discarded on focus loss or recovery.
+
+Keyboard, touch and video need no additional iPhone app. Text mapping requires
+the iPhone **U.S. hardware keyboard layout** and supports ASCII and common Latin
+accents, including Portuguese and Spanish. Other layouts may produce different
+characters. Use the iPhone keyboard for emoji and other writing systems. iOS
+controls virtual keyboard visibility; the temporary remote keyboard is removed
+after each send, without a guarantee of forcing the onscreen keyboard in every app.
+
+Start a drag in the image's bottom strip for a system gesture: swipe up and release
+for Home, or swipe up and hold before releasing for the app switcher. iOS decides
+the result from movement and timing. Home and Apps buttons remain available.
+Stale video or focus loss terminates contact; never replay an uncertain gesture.
+
 The statistics panel separates GPUI paint FPS, a derived frame interval, local
 frame age and API response time. It does not measure full mouse-to-device latency.
 

@@ -139,7 +139,7 @@ struct DragArgs {
 struct TypeTextArgs {
     /// Device identifier returned by list_devices.
     device_id: String,
-    /// ASCII text supported by a US keyboard layout, up to 4096 bytes.
+    /// US hardware-layout text, including supported Latin accents, up to 4096 bytes.
     #[schemars(length(max = 4096))]
     text: String,
 }
@@ -368,7 +368,7 @@ impl IosMcp {
     }
 
     #[tool(
-        description = "Type ASCII text using the iPhone's US keyboard mapping. Requires a focused input; never replay an uncertain result.",
+        description = "Type text using the iPhone's US hardware keyboard mapping, including supported Latin accents. Requires a focused input; never replay an uncertain result.",
         annotations(
             read_only_hint = false,
             destructive_hint = true,
