@@ -524,7 +524,7 @@ pub fn open(
         window_min_size: Some(size(px(360.), px(440.))),
         window_background: WindowBackgroundAppearance::Transparent,
         titlebar: Some(TitlebarOptions {
-            title: Some(format!("{} · TetherDeck", session.name).into()),
+            title: Some(format!("{} · TetherDeck", crate::desktop::presentation_device_name(&session.name)).into()),
             appears_transparent: true,
             ..Default::default()
         }),

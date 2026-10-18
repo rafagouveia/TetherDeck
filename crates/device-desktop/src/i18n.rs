@@ -44,6 +44,12 @@ pub fn tr(source: &str) -> String {
         return source.to_owned();
     }
     let translated = match source {
+        "iPhone de demonstração" => ("Demo iPhone", "iPhone de demostración"),
+        "Oculto na apresentação" => ("Hidden in presentation", "Oculto en presentación"),
+        "Apresentação · dados do aparelho ocultos" => (
+            "Presentation · device details hidden",
+            "Presentación · datos del dispositivo ocultos",
+        ),
         "Use AX para inspecionar sem runner ou WDA assinado para ativar elementos. Vídeo e toque têm uma conexão independente." => {
             (
                 "Use AX to inspect without a runner, or signed WDA to activate elements. Video and touch use an independent connection.",
@@ -84,6 +90,7 @@ pub fn tr(source: &str) -> String {
             "Elige el transporte, busca el dispositivo y abre una sesión local.",
         ),
         "Túnel RSD" => ("RSD tunnel", "Túnel RSD"),
+        "Wi-Fi direto" => ("Direct Wi-Fi", "Wi-Fi directo"),
         "Conexão" => ("Connection", "Conexión"),
         "Conecte o cabo de dados e desbloqueie o iPhone. Confirme a confiança no aparelho se solicitada." => {
             (
@@ -566,6 +573,9 @@ pub fn tr(source: &str) -> String {
 }
 
 fn translate_status(source: &str) -> String {
+    if let Some(transport) = source.strip_prefix("Conectado · ") {
+        return format!("{} · {}", tr("Conectado"), tr(transport));
+    }
     for prefix in [
         "Diagnóstico",
         "Conectado",

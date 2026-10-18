@@ -11,6 +11,52 @@ connection diagnostics into one Rust application. It is free, open source and
 currently focused on Windows. The project is an experimental preview; device and
 iOS compatibility are still being expanded.
 
+## See TetherDeck
+
+Real captures; device names and identifiers are hidden.
+GIFs use sampled frames and shortened pauses; FPS and latency require separate measurements.
+
+![TetherDeck Windows workspace with a connected demonstration iPhone and session tools](docs/media/workspace.jpg)
+
+[Open the workspace screenshot](docs/media/workspace.jpg).
+
+<details>
+<summary>Watch a short tour of navigation and settings</summary>
+
+![Animated tour of TetherDeck workspace navigation and settings](docs/media/workflow.gif)
+
+[Open the animated tour](docs/media/workflow.gif).
+
+</details>
+
+### Live remote window
+
+The iPhone screen stays in its own window, alongside the device controls.
+
+<p align="center">
+  <img src="docs/media/remote-screen.jpg" width="360" alt="Independent TetherDeck remote window showing the iPhone Calculator and device controls">
+</p>
+
+[Open the remote window screenshot](docs/media/remote-screen.jpg).
+
+<details>
+<summary>Watch a real interaction: 2 + 2 = 4 in Calculator</summary>
+
+![TetherDeck controlling the iPhone Calculator to calculate two plus two](docs/media/remote-control.gif)
+
+[Open the remote interaction clip](docs/media/remote-control.gif).
+
+</details>
+
+### Inspect by element
+
+Find controls by name or accessibility identifier. Here, Calculator's `AllClear`
+key is selected from a real WDA snapshot.
+
+![TetherDeck element inspector with the Calculator AllClear key selected from a WDA snapshot](docs/media/elements.jpg)
+
+[Open the element inspector screenshot](docs/media/elements.jpg).
+
 ## What you can do
 
 | Workflow | Available capability |

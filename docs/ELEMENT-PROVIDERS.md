@@ -72,6 +72,9 @@ Trocar provedor descarta a sessão de elementos e referências anteriores. A
 ativação consome a referência antes do envio, exige snapshot de até 30 segundos,
 confere app/PID, estado e unicidade do seletor. Resultado incerto não é repetido.
 Após a submissão, observe uma consulta nova para conferir a mudança esperada.
+Teclas nativas (`XCUIElementTypeKey`), como as da Calculadora, usam a mesma
+ativação por elemento do XCTest. Permanecem sujeitas às verificações de
+referência, aplicativo, visibilidade e estado; não há fallback para coordenadas.
 
 ## Fontes primárias da compatibilidade
 
@@ -80,4 +83,6 @@ Após a submissão, observe uma consulta nova para conferir a mudança esperada.
 - [Correção MJPEG USE_IP](https://github.com/appium/WebDriverAgent/commit/53573cf3a74fe8db87cb5f38b2cdc7f17e856e4f): origem da exigência de revisão das duas interfaces.
 - [idevice](https://github.com/jkcoxson/idevice): provider/RSD, XCTest e WDA usados como base nativa.
 - [InstallationProxy remoto](https://idevice.wiki/docs/service-reference/files-apps/installation-proxy/): serviço shim usado para consultar os metadados do runner pelo túnel.
+- [Apple: tipo Key](https://developer.apple.com/documentation/xcuiautomation/xcuielement/elementtype/key) e [tap de elemento](https://developer.apple.com/documentation/xcuiautomation/xcuielement/tap()): teclas são elementos nativos, com toque resolvido pelo XCTest.
+- [WDA 16.15.3: clique de elemento](https://github.com/appium/WebDriverAgent/blob/v16.15.3/WebDriverAgentLib/Commands/FBElementCommands.m): o endpoint chama o toque nativo do elemento no iOS.
 - [libusbmuxd iproxy](https://github.com/libimobiledevice/libusbmuxd/blob/master/tools/iproxy.c): transporte Network não é tratado como prova de túnel autenticado pela simples presença no usbmux.

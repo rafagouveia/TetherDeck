@@ -10,6 +10,52 @@ Projeto gratuito e open source em Rust, atualmente em prévia experimental com f
 no Windows. Reúne tela ao vivo em janela independente, toque contínuo pelo mouse,
 controles do aparelho, inspeção por elementos e diagnóstico de conexão.
 
+## Conheça o TetherDeck
+
+Capturas reais; nomes e identificadores do aparelho ocultos.
+Os GIFs usam quadros amostrados e pausas encurtadas; FPS e latência exigem medição separada.
+
+![Interface do TetherDeck no Windows com um iPhone de demonstração conectado e as ferramentas da sessão](docs/media/workspace.pt-BR.jpg)
+
+[Abrir a captura da interface](docs/media/workspace.pt-BR.jpg).
+
+<details>
+<summary>Ver um tour breve da navegação e das configurações</summary>
+
+![Tour animado da navegação e das configurações do TetherDeck](docs/media/workflow.gif)
+
+[Abrir o tour animado](docs/media/workflow.gif).
+
+</details>
+
+### Tela remota ao vivo
+
+A tela do iPhone fica em uma janela independente, ao lado dos controles do aparelho.
+
+<p align="center">
+  <img src="docs/media/remote-screen.jpg" width="360" alt="Janela remota independente do TetherDeck mostrando a Calculadora do iPhone e os controles do aparelho">
+</p>
+
+[Abrir a captura da janela remota](docs/media/remote-screen.jpg).
+
+<details>
+<summary>Ver uma interação real: 2 + 2 = 4 na Calculadora</summary>
+
+![TetherDeck controlando a Calculadora do iPhone para calcular dois mais dois](docs/media/remote-control.gif)
+
+[Abrir o clipe de interação remota](docs/media/remote-control.gif).
+
+</details>
+
+### Inspeção por elemento
+
+Encontre controles pelo nome ou identificador de acessibilidade. Aqui, a tecla
+`AllClear` da Calculadora está selecionada em uma captura real do WDA.
+
+![Inspetor de elementos do TetherDeck com a tecla AllClear da Calculadora selecionada em uma captura do WDA](docs/media/elements.jpg)
+
+[Abrir a captura do inspetor de elementos](docs/media/elements.jpg).
+
 ## Começar
 
 1. Instale o suporte de dispositivos Apple no Windows e estabeleça o pareamento USB.

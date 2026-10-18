@@ -28,12 +28,97 @@ use gpui_kit::*;
 use rust_ios_device_api::{CheckStatus, ElementProvider, IdentityStatus};
 use std::{
     ops::Range,
-    sync::Arc,
+    sync::{Arc, OnceLock},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 pub(crate) mod theme;
 actions!(tetherdeck, [ToggleSidebar]);
+
+/// Process-only presentation preference. It never changes device/session data.
+pub(crate) fn presentation_active() -> bool {
+    static ACTIVE: OnceLock<bool> = OnceLock::new();
+    *ACTIVE.get_or_init(|| std::env::var("TETHERDECK_PRESENTATION").is_ok_and(|value| value == "1"))
+}
+
+pub(crate) fn presentation_device_name(name: &str) -> String {
+    if presentation_active() {
+        tr("iPhone de demonstração")
+    } else {
+        name.to_owned()
+    }
+}
+
+pub(crate) fn presentation_transport(transport: &str) -> String {
+    if !presentation_active() {
+        return tr(transport);
+    }
+    if transport.starts_with("network:") {
+        "Wi-Fi".into()
+    } else if transport.starts_with("rsd:") {
+        tr("Túnel RSD")
+    } else {
+        // Session labels are already address-free; discovery transports are not.
+        tr(transport)
+    }
+}
+
+fn presentation_identifier(identifier: &str) -> String {
+    if presentation_active() {
+        tr("Oculto na apresentação")
+    } else {
+        identifier.to_owned()
+    }
+}
+
+/// Sanitize only rendered application notices, never model events or element content.
+fn presentation_notice(source: &str, model: &Model, config: &Config) -> String {
+    if !presentation_active() {
+        return source.to_owned();
+    }
+    let mut replacements = Vec::new();
+    let hidden = tr("Oculto na apresentação");
+    let alias = tr("iPhone de demonstração");
+    let mut add = |value: &str, replacement: &str| {
+        if !value.is_empty() {
+            replacements.push((value.to_owned(), replacement.to_owned()));
+        }
+    };
+    if let Some(session) = &model.session {
+        add(&session.name, &alias);
+        add(&session.device_id, &hidden);
+        add(&session.origin, &hidden);
+    }
+    if let Some(report) = &model.report {
+        for device in &report.devices {
+            if let Some(name) = &device.name {
+                add(name, &alias);
+            }
+            add(&device.device_id, &hidden);
+            if let Some(udid) = &device.udid {
+                add(udid, &hidden);
+            }
+            if device.transport.starts_with("network:") || device.transport.starts_with("rsd:") {
+                add(
+                    &device.transport,
+                    &presentation_transport(&device.transport),
+                );
+                if let Some((_, address)) = device.transport.split_once(':') {
+                    add(address, &hidden);
+                }
+            }
+        }
+    }
+    add(&config.udid, &hidden);
+    add(&config.host, &hidden);
+    add(&config.tunneld_origin, &hidden);
+    replacements.sort_by_key(|(value, _)| std::cmp::Reverse(value.len()));
+    replacements
+        .into_iter()
+        .fold(source.to_owned(), |text, (value, replacement)| {
+            text.replace(&value, &replacement)
+        })
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
@@ -406,21 +491,21 @@ impl Desktop {
             cx,
             "UDID do iPhone pareado",
             config.udid.clone(),
-            false,
+            presentation_active(),
         );
         let host = input(
             window,
             cx,
             "Descoberta automática",
             config.host.clone(),
-            false,
+            presentation_active(),
         );
         let tunnel = input(
             window,
             cx,
             "http://127.0.0.1:49151",
             config.tunneld_origin.clone(),
-            false,
+            presentation_active(),
         );
         let runner = input(
             window,
@@ -855,7 +940,7 @@ impl Desktop {
             .read(cx)
             .session
             .as_ref()
-            .map(|session| session.name.clone());
+            .map(|session| presentation_device_name(&session.name));
         Sidebar::new("device-sidebar")
             .w_full()
             .collapsible(SidebarCollapsible::None)
@@ -1018,13 +1103,13 @@ impl Desktop {
                                 .child(icons::icon(IconName::Smartphone).size(px(28.)).text_color(theme::accent())))
                             .child(div().flex().flex_col().flex_1().min_w_0().gap(px(4.))
                                 .child(div().text_size(px(20.)).font_weight(FontWeight::SEMIBOLD)
-                                    .truncate().child(session.name.clone()))
+                                    .truncate().child(presentation_device_name(&session.name)))
                                 .child(div().text_size(px(14.)).text_color(theme::muted()).truncate()
                                     .child(device_model(session.product_type.as_deref()).to_owned()))))
                         .child(div().flex().flex_wrap().items_center().justify_between().gap(px(12.))
                             .child(div().flex().items_center().gap(px(8.))
                                 .child(icons::icon(match session.transport { Transport::Usb => IconName::Usb, Transport::Wifi => IconName::Wifi, Transport::Rsd => IconName::Network }).size(px(16.)).text_color(theme::muted()))
-                                .child(hint(format!("{} · {}", session.transport_label(),tr("Identidade verificada")))))
+                                .child(hint(format!("{} · {}", presentation_transport(session.transport_label()),tr("Identidade verificada")))))
                             .child(button("disconnect").ghost().icon(icons::icon(IconName::Unplug)).label(tr("Desconectar"))
                                 .disabled(busy).on_click(cx.listener(|this, _, _, cx| {
                                     this.close_remote(cx);
@@ -1216,7 +1301,7 @@ impl Desktop {
                             hint(format!(
                                 "{}: {}",
                                 tr("iPhone autorizado"),
-                                summary.target_udid
+                                presentation_identifier(&summary.target_udid)
                             ))
                             .truncate(),
                         ),
@@ -1314,13 +1399,15 @@ impl Desktop {
                                     .w_full()
                                     .truncate()
                                     .font_weight(FontWeight::MEDIUM)
-                                    .child(device.name.clone().unwrap_or_else(|| "iPhone".into())),
+                                    .child(presentation_device_name(
+                                        device.name.as_deref().unwrap_or("iPhone"),
+                                    )),
                             )
                             .child(
                                 hint(format!(
                                     "{} · {} · {}",
                                     device_model(device.product_type.as_deref()),
-                                    device.transport,
+                                    presentation_transport(&device.transport),
                                     if ready {
                                         "Identidade verificada"
                                     } else {
@@ -1452,13 +1539,16 @@ impl Desktop {
         );
         for warning in &snapshot.warnings {
             page = page.child(
-                hint_raw(warning.clone())
+                hint_raw(presentation_notice(warning, model, &self.config))
                     .text_color(theme::warning())
                     .mb_2(),
             );
         }
         page = page.child(
             div()
+                .id("elements-list-region")
+                .role(Role::ListBox)
+                .aria_label(tr("Elementos"))
                 .flex_1()
                 .min_h(px(160.))
                 .border_1()
@@ -1537,9 +1627,18 @@ impl Desktop {
                 .clone()
                 .unwrap_or_else(|| tr("Sem identificador"))
         });
+        let selected = self.selected_element.as_ref() == Some(&id);
+        let accessible_name = format!("{label} · {secondary}");
         Some(
             component::list::ListItem::new(format!("element-{id}"))
-                .selected(self.selected_element.as_ref() == Some(&id))
+                // Virtual rows are laid out as roots: claim the whole available
+                // width so the pointer target includes the row's empty area.
+                .w_full()
+                .role(Role::ListBoxOption)
+                .accessibility_label(accessible_name)
+                .aria_selected(selected)
+                .cursor_pointer()
+                .selected(selected)
                 .h(px(64.))
                 .px_3()
                 .py_2()
@@ -1835,9 +1934,16 @@ impl Render for Desktop {
             Page::Settings => self.render_settings(cx),
         };
         let model = self.model.read(cx);
-        let status = model.status.clone();
-        let error = model.error.clone();
-        let events = model.events.clone();
+        let status = presentation_notice(&model.status, model, &self.config);
+        let error = model
+            .error
+            .as_deref()
+            .map(|error| presentation_notice(error, model, &self.config));
+        let events: Vec<_> = model
+            .events
+            .iter()
+            .map(|event| presentation_notice(event, model, &self.config))
+            .collect();
         let sidebar = self.sidebar(openness.value, cx);
         let header = self.header(cx);
         let mut main = div()
@@ -1922,7 +2028,11 @@ impl Render for Desktop {
                         })),
                 )
                 .child(hint(status).truncate())
-                .right(hint("Open source · MIT")),
+                .right(hint(if presentation_active() {
+                    "Apresentação · dados do aparelho ocultos"
+                } else {
+                    "Open source · MIT"
+                })),
         );
         let sidebar_width = px(64.) + (self.sidebar_expanded_width - px(64.)) * openness.value;
         let moving = matches!(

@@ -623,7 +623,10 @@ impl Model {
             if devices.len()!=1 { return Err("O servidor precisa oferecer exatamente um aparelho com identidade disponível para abrir esta sessão.".into()); }
             let device=devices.values().next().ok_or("Nenhum aparelho disponível.")?;
             let capabilities=client.capabilities().await.map_err(|e|e.to_string())?;
-            let session=Session {client,device_id:device.device_id.clone(),name:device.name.clone().unwrap_or_else(||"iPhone".into()),product_type:device.product_type.clone(),origin,token,transport:Transport::Rsd,
+            let transport=if capabilities.pointer("/transport/direct_paired_wifi").and_then(|v|v.as_bool())==Some(true) || device.transport.starts_with("network:") {Transport::Wifi}
+                else if capabilities.pointer("/transport/rsd_configured").and_then(|v|v.as_bool())==Some(true) || device.transport.starts_with("rsd:") {Transport::Rsd}
+                else {Transport::Usb};
+            let session=Session {client,device_id:device.device_id.clone(),name:device.name.clone().unwrap_or_else(||"iPhone".into()),product_type:device.product_type.clone(),origin,token,transport,
                 runner_configured:capabilities.pointer("/features/ui_elements/runner_start_allowed").or_else(||capabilities.pointer("/features/ui_elements/runner_configured")).and_then(|value|value.as_bool()).unwrap_or(false),
                 allow_usb_recovery:capabilities.get("usb_interface_restart").and_then(|value|value.as_bool()).unwrap_or(false),
                 allow_service_recovery:capabilities.pointer("/features/service_restart").and_then(|value|value.as_bool()).unwrap_or(false),_child:None};

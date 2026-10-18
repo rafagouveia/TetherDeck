@@ -750,6 +750,8 @@ fn walk(
     let activatable = matches!(
         role.as_str(),
         "XCUIElementTypeButton"
+            // Native calculator/keyboard keys use the same XCTest element tap.
+            | "XCUIElementTypeKey"
             | "XCUIElementTypeLink"
             | "XCUIElementTypeCell"
             | "XCUIElementTypeSwitch"

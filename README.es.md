@@ -11,6 +11,52 @@ experimental y centrado en Windows. Integra pantalla en vivo independiente,
 contacto continuo con el ratón, controles del dispositivo, inspección de elementos
 y diagnóstico de conexión.
 
+## Conoce TetherDeck
+
+Capturas reales; nombres e identificadores del dispositivo ocultos.
+Los GIF usan fotogramas muestreados y pausas abreviadas; FPS y latencia requieren mediciones separadas.
+
+![Interfaz de TetherDeck en Windows con un iPhone de demostración conectado y herramientas de sesión](docs/media/workspace.es.jpg)
+
+[Abrir la captura de la interfaz](docs/media/workspace.es.jpg).
+
+<details>
+<summary>Ver un breve recorrido por la navegación y la configuración</summary>
+
+![Recorrido animado por la navegación y la configuración de TetherDeck](docs/media/workflow.gif)
+
+[Abrir el recorrido animado](docs/media/workflow.gif).
+
+</details>
+
+### Pantalla remota en vivo
+
+La pantalla del iPhone tiene su propia ventana, junto a los controles del dispositivo.
+
+<p align="center">
+  <img src="docs/media/remote-screen.jpg" width="360" alt="Ventana remota independiente de TetherDeck con la Calculadora del iPhone y los controles del dispositivo">
+</p>
+
+[Abrir la captura de la ventana remota](docs/media/remote-screen.jpg).
+
+<details>
+<summary>Ver una interacción real: 2 + 2 = 4 en la Calculadora</summary>
+
+![TetherDeck controlando la Calculadora del iPhone para calcular dos más dos](docs/media/remote-control.gif)
+
+[Abrir el clip de interacción remota](docs/media/remote-control.gif).
+
+</details>
+
+### Inspección por elemento
+
+Busca controles por nombre o identificador de accesibilidad. Aquí, la tecla
+`AllClear` de la Calculadora está seleccionada en una captura real de WDA.
+
+![Inspector de elementos de TetherDeck con la tecla AllClear de la Calculadora seleccionada en una captura de WDA](docs/media/elements.jpg)
+
+[Abrir la captura del inspector de elementos](docs/media/elements.jpg).
+
 ## Primeros pasos
 
 1. Instala el soporte de dispositivos Apple en Windows y establece el emparejamiento USB.
