@@ -1482,7 +1482,7 @@ impl Render for Remote {
                 .tooltip(tr("Copiar quadro exibido")).accessibility_label(tr("Copiar captura da tela do iPhone"))
                 .disabled(self.frame.is_none() || self.busy)
                 .on_click(cx.listener(|view, _, window, cx| view.copy_frame(window, cx))));
-        let status = if running && self.fresh() {
+        let status = if running && !placeholder {
             format!("{} · {:.1} FPS", tr("Ao vivo"), self.fps())
         } else if self.recovering() {
             "Reconectando automaticamente…".into()
@@ -1767,7 +1767,7 @@ impl Render for Remote {
             );
         }
         if self.show_stats {
-            let fps = if running && self.fresh() {
+            let fps = if running && !placeholder {
                 self.fps()
             } else {
                 0.
