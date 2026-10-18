@@ -1,0 +1,21 @@
+name: Feature or design request
+description: Suggest a focused improvement
+labels: enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What workflow needs improvement?
+      description: English, Portuguese and Spanish are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the user outcome, relevant transport and any alternatives.
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints or evidence
+      description: Redact personal information from screenshots and examples.

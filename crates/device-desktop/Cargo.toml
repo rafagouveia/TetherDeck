@@ -1,0 +1,30 @@
+[package]
+name = "tetherdeck-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+gpui-kit = "=0.7.3"
+rust-ios-device-api = { path = "../device-api" }
+rust-ios-device-client = { path = "../device-client" }
+device-video = { package = "rust-ios-device-video", path = "../device-video" }
+tokio.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+smallvec = "1"
+idevice = { workspace = true, features = ["afc", "installation_proxy"] }
+plist = "1"
+async_zip = { version = "0.0.18", default-features = false, features = ["deflate"] }
+futures-lite = "2"
+cms = "0.2"
+der = "0.7"
+
+[target.'cfg(windows)'.dependencies]
+raw-window-handle = "0.6"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_System_Threading", "Win32_UI_HiDpi", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "=0.1.34"

@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible connection, UI or automation problem
+labels: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English, Portuguese and Spanish reports are welcome. Redact tokens, UDIDs,
+        addresses, user paths and screen content. Never upload keys, profiles,
+        pairing records or personal IPAs. Use SECURITY.md for vulnerabilities.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Expected result, actual result and minimal steps to reproduce.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Windows / iOS version and transport
+      placeholder: Windows version, iOS version, USB or selected Wi-Fi path
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostic evidence
+      description: Include relevant codes only. Paint FPS and API response do not measure end-to-end latency.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I removed credentials and personal device/network/screen information.
+          required: true

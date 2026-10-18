@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64" fill="none">
+  <title>TetherDeck</title>
+  <rect x="1" y="1" width="62" height="62" rx="14" fill="#282C33" stroke="#4B5263" stroke-width="1"/>
+  <path d="M25 14H20a8 8 0 0 0-8 8v20a8 8 0 0 0 8 8h5" stroke="#DCE0E5" stroke-width="5" stroke-linecap="round"/>
+  <path d="M39 14h5a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8h-5" stroke="#74ADE8" stroke-width="5" stroke-linecap="round"/>
+  <path d="M24 32h16" stroke="#DCE0E5" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="24" cy="32" r="4" fill="#DCE0E5"/>
+  <circle cx="40" cy="32" r="4" fill="#74ADE8"/>
+</svg>

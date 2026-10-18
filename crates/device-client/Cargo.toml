@@ -1,0 +1,14 @@
+[package]
+name = "rust-ios-device-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rust-ios-device-api = { path = "../device-api" }
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+thiserror = "2"
+tokio.workspace = true

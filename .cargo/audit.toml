@@ -1,0 +1,13 @@
+[advisories]
+ignore = [
+    # This graph uses rsa only for TLS client signatures and public-key verification.
+    # The advisory concerns PKCS#1 v1.5 decryption padding; the product has no RSA decrypt path.
+    "RUSTSEC-2023-0071",
+    # rustls-rustcrypto uses rustls-webpki 0.102 only for AlgorithmIdentifier constants.
+    # The patched idevice verifier pins the peer certificate and does not invoke path, name,
+    # or CRL validation in that vulnerable crate; TLS transcript signatures still verify.
+    "RUSTSEC-2026-0098",
+    "RUSTSEC-2026-0099",
+    "RUSTSEC-2026-0104",
+    "RUSTSEC-2026-0049",
+]

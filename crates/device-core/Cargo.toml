@@ -1,0 +1,20 @@
+[package]
+name = "rust-ios-device-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+idevice.workspace = true
+rust-ios-device-api = { path = "../device-api" }
+thiserror = "2"
+tokio.workspace = true
+uuid.workspace = true
+plist = "1"
+ns-keyed-archive = "0.1"
+serde_json.workspace = true
+
+mdns-sd = "=0.21.4"
+
+tracing.workspace = true
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }

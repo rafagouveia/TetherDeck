@@ -1,0 +1,50 @@
+# Rust build products
+/target/
+**/target/
+**/.cargo-ok
+/vendor/idevice/Cargo.lock
+
+# Private scratch work, signing cache and local deliverables
+/work/
+/outputs/
+/.zsign_cache/
+/.tetherdeck/
+.pymobiledevice3/
+pair-records/
+
+# Signing identities, device profiles and personal application packages
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+*.cer
+*.crt
+*.der
+*.mobileprovision
+*.provisionprofile
+*.ipa
+*.app/
+*.dSYM/
+*.xcarchive/
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.credentials.json
+mcp.local.json
+
+# Generated packages, captures and diagnostic traces
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.log
+*.dmp
+*.etl
+*.pcap
+*.pcapng
+*.tmp
+.DS_Store
+Thumbs.db

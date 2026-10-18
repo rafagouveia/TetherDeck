@@ -1,0 +1,1 @@
+Lucide icons from https://github.com/lucide-icons/lucide/tree/0.468.0/icons, retrieved 2026-10-17. Original SVGs retained; PNGs rasterized to 72 px, white stroke for runtime tinting. ISC license in LICENSE. No icon font is required.

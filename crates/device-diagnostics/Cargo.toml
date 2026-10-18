@@ -1,0 +1,16 @@
+[package]
+name = "rust-ios-device-diagnostics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rust-ios-device-api = { path = "../device-api" }
+rust-ios-device-core = { path = "../device-core" }
+idevice.workspace = true
+nusb = "=0.2.8"
+tokio.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-service = "=0.8.1"
+windows-sys = { version = "=0.61.2", features = ["Win32_Devices_DeviceAndDriverInstallation", "Win32_Devices_Properties", "Win32_System_SystemInformation"] }

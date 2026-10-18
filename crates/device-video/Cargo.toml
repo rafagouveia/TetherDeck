@@ -1,0 +1,10 @@
+[package]
+name = "rust-ios-device-video"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rust-ios-device-client = { path = "../device-client" }
+tokio.workspace = true
+serde_json.workspace = true

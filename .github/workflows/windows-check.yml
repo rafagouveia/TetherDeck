@@ -1,0 +1,28 @@
+name: Windows source checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Publication hygiene
+        shell: pwsh
+        run: ./scripts/check-publication.ps1
+      - name: Rust stable
+        shell: pwsh
+        run: rustup toolchain install stable --profile minimal --no-self-update
+      - name: Compile Windows workspace
+        shell: pwsh
+        run: cargo +stable check --locked --workspace
